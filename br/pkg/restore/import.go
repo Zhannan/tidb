@@ -29,8 +29,8 @@ import (
 	"github.com/pingcap/tidb/br/pkg/stream"
 	"github.com/pingcap/tidb/br/pkg/summary"
 	"github.com/pingcap/tidb/br/pkg/utils"
-	"github.com/pingcap/tidb/kv"
-	"github.com/pingcap/tidb/util/codec"
+	"github.com/pingcap/tidb/pkg/kv"
+	"github.com/pingcap/tidb/pkg/util/codec"
 	kvutil "github.com/tikv/client-go/v2/util"
 	pd "github.com/tikv/pd/client"
 	"go.uber.org/multierr"
@@ -714,7 +714,7 @@ func (importer *FileImporter) downloadSST(
 		logutil.Leader(regionInfo.Leader),
 	)
 
-	var atomicResp atomic.Value
+	var atomicResp atomic.Pointer[import_sstpb.DownloadResponse]
 	eg, ectx := errgroup.WithContext(ctx)
 	for _, p := range regionInfo.Region.GetPeers() {
 		peer := p
@@ -746,7 +746,7 @@ func (importer *FileImporter) downloadSST(
 		return nil, err
 	}
 
-	downloadResp := atomicResp.Load().(*import_sstpb.DownloadResponse)
+	downloadResp := atomicResp.Load()
 	sstMeta.Range.Start = TruncateTS(downloadResp.Range.GetStart())
 	sstMeta.Range.End = TruncateTS(downloadResp.Range.GetEnd())
 	sstMeta.ApiVersion = apiVersion
@@ -799,7 +799,7 @@ func (importer *FileImporter) downloadRawKVSST(
 	}
 	log.Debug("download SST", logutil.SSTMeta(sstMeta), logutil.Region(regionInfo.Region))
 
-	var atomicResp atomic.Value
+	var atomicResp atomic.Pointer[import_sstpb.DownloadResponse]
 	eg, ectx := errgroup.WithContext(ctx)
 	for _, p := range regionInfo.Region.GetPeers() {
 		peer := p
@@ -824,7 +824,7 @@ func (importer *FileImporter) downloadRawKVSST(
 		return nil, err
 	}
 
-	downloadResp := atomicResp.Load().(*import_sstpb.DownloadResponse)
+	downloadResp := atomicResp.Load()
 	sstMeta.Range.Start = downloadResp.Range.GetStart()
 	sstMeta.Range.End = downloadResp.Range.GetEnd()
 	sstMeta.ApiVersion = apiVersion
